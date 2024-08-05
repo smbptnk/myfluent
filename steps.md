@@ -1,3 +1,23 @@
+Fluent
+
+https://www.youtube.com/watch?v=j76ozzIbuO8&t=1949s
+
+https://docs.fluentbit.io/manual/pipeline/outputs/azure_blob
+
+https://github.com/fluent/helm-charts/blob/main/charts/fluent-bit/values.yaml
+
+https://github.com/kubesphere-sigs/fluent-operator-walkthrough#how-to-check-the-configuration-and-data
+https://github.com/kubesphere-sigs/fluent-operator-walkthrough/blob/master/deploy-fluent-operator.sh
+
+https://github.com/kubesphere-sigs/fluent-operator-walkthrough#using-fluent-bit-to-collect-k8s-application-logs-and-output-to-kafka-elasticsearch-and-loki
+https://docs.fluentbit.io/manual/administration/configuring-fluent-bit
+https://docs.fluentbit.io/manual/pipeline/outputs/azure_blob
+
+Extras:
+
+https://github.com/kubesphere-sigs/sample-admission-webhook/blob/master/deploy/sample-admission-webhook/templates/webhook.yaml
+https://docs.fluentbit.io/manual/installation/kubernetes#installation
+
 Steps:
 
 > helm upgrade --install fluent-operator --create-namespace -n fluent https://github.com/fluent/fluent-operator/releases/download/v3.0.0/fluent-operator.tgz
