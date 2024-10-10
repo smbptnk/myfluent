@@ -1,0 +1,929 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    checksum/config: 02824a76bac8b145bb3d407e1d393fc8f75f8644a3353e6a193b8cdd524f40dc
+    istio.io/rev: default
+    kubectl.kubernetes.io/default-container: fluent-bit
+    kubectl.kubernetes.io/default-logs-container: fluent-bit
+    prometheus.io/path: /stats/prometheus
+    prometheus.io/port: "15020"
+    prometheus.io/scrape: "true"
+    sidecar.istio.io/status: '{"initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["workload-socket","credential-socket","workload-certs","istio-envoy","istio-data","istio-podinfo","istio-token","istiod-ca-cert"],"imagePullSecrets":null,"revision":"default"}'
+  creationTimestamp: "2024-08-05T02:52:43Z"
+  generateName: fluent-bit-
+  labels:
+    app.kubernetes.io/instance: fluent-bit
+    app.kubernetes.io/name: fluent-bit
+    controller-revision-hash: 78b8d7c4c
+    pod-template-generation: "2"
+    security.istio.io/tlsMode: istio
+    service.istio.io/canonical-name: fluent-bit
+    service.istio.io/canonical-revision: latest
+  name: fluent-bit-c6hjw
+  namespace: default
+  ownerReferences:
+  - apiVersion: apps/v1
+    blockOwnerDeletion: true
+    controller: true
+    kind: DaemonSet
+    name: fluent-bit
+    uid: 5e7e1cec-22f8-4898-b238-b584c07684b3
+  resourceVersion: "13921822"
+  uid: 9dbcafdb-1ea8-4a69-953a-f42de0e663f7
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchFields:
+          - key: metadata.name
+            operator: In
+            values:
+            - minikube
+  containers:
+  - args:
+    - --workdir=/fluent-bit/etc
+    - --config=/fluent-bit/etc/conf/fluent-bit.conf
+    command:
+    - /fluent-bit/bin/fluent-bit
+    image: cr.fluentbit.io/fluent/fluent-bit:3.1.4
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      failureThreshold: 3
+      httpGet:
+        path: /app-health/fluent-bit/livez
+        port: 15020
+        scheme: HTTP
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 1
+    name: fluent-bit
+    ports:
+    - containerPort: 2020
+      name: http
+      protocol: TCP
+    readinessProbe:
+      failureThreshold: 3
+      httpGet:
+        path: /app-health/fluent-bit/readyz
+        port: 15020
+        scheme: HTTP
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 1
+    resources: {}
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /fluent-bit/etc/conf
+      name: config
+    - mountPath: /var/log
+      name: varlog
+    - mountPath: /var/lib/docker/containers
+      name: varlibdockercontainers
+      readOnly: true
+    - mountPath: /etc/machine-id
+      name: etcmachineid
+      readOnly: true
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-6f9nk
+      readOnly: true
+  - args:
+    - proxy
+    - sidecar
+    - --domain
+    - $(POD_NAMESPACE).svc.cluster.local
+    - --proxyLogLevel=warning
+    - --proxyComponentLogLevel=misc:error
+    - --log_output_level=default:info
+    env:
+    - name: JWT_POLICY
+      value: third-party-jwt
+    - name: PILOT_CERT_PROVIDER
+      value: istiod
+    - name: CA_ADDR
+      value: istiod.istio-system.svc:15012
+    - name: POD_NAME
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.name
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.namespace
+    - name: INSTANCE_IP
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: status.podIP
+    - name: SERVICE_ACCOUNT
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: spec.serviceAccountName
+    - name: HOST_IP
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: status.hostIP
+    - name: ISTIO_CPU_LIMIT
+      valueFrom:
+        resourceFieldRef:
+          divisor: "0"
+          resource: limits.cpu
+    - name: PROXY_CONFIG
+      value: |
+        {}
+    - name: ISTIO_META_POD_PORTS
+      value: |-
+        [
+            {"name":"http","containerPort":2020,"protocol":"TCP"}
+        ]
+    - name: ISTIO_META_APP_CONTAINERS
+      value: fluent-bit
+    - name: GOMEMLIMIT
+      valueFrom:
+        resourceFieldRef:
+          divisor: "0"
+          resource: limits.memory
+    - name: GOMAXPROCS
+      valueFrom:
+        resourceFieldRef:
+          divisor: "0"
+          resource: limits.cpu
+    - name: ISTIO_META_CLUSTER_ID
+      value: Kubernetes
+    - name: ISTIO_META_NODE_NAME
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: spec.nodeName
+    - name: ISTIO_META_INTERCEPTION_MODE
+      value: REDIRECT
+    - name: ISTIO_META_WORKLOAD_NAME
+      value: fluent-bit
+    - name: ISTIO_META_OWNER
+      value: kubernetes://apis/apps/v1/namespaces/default/daemonsets/fluent-bit
+    - name: ISTIO_META_MESH_ID
+      value: cluster.local
+    - name: TRUST_DOMAIN
+      value: cluster.local
+    - name: ISTIO_KUBE_APP_PROBERS
+      value: '{"/app-health/fluent-bit/livez":{"httpGet":{"path":"/","port":2020,"scheme":"HTTP"},"timeoutSeconds":1},"/app-health/fluent-bit/readyz":{"httpGet":{"path":"/api/v1/health","port":2020,"scheme":"HTTP"},"timeoutSeconds":1}}'
+    image: docker.io/istio/proxyv2:1.20.2
+    imagePullPolicy: IfNotPresent
+    name: istio-proxy
+    ports:
+    - containerPort: 15090
+      name: http-envoy-prom
+      protocol: TCP
+    readinessProbe:
+      failureThreshold: 4
+      httpGet:
+        path: /healthz/ready
+        port: 15021
+        scheme: HTTP
+      periodSeconds: 15
+      successThreshold: 1
+      timeoutSeconds: 3
+    resources:
+      limits:
+        cpu: "2"
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsGroup: 1337
+      runAsNonRoot: true
+      runAsUser: 1337
+    startupProbe:
+      failureThreshold: 600
+      httpGet:
+        path: /healthz/ready
+        port: 15021
+        scheme: HTTP
+      periodSeconds: 1
+      successThreshold: 1
+      timeoutSeconds: 3
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /var/run/secrets/workload-spiffe-uds
+      name: workload-socket
+    - mountPath: /var/run/secrets/credential-uds
+      name: credential-socket
+    - mountPath: /var/run/secrets/workload-spiffe-credentials
+      name: workload-certs
+    - mountPath: /var/run/secrets/istio
+      name: istiod-ca-cert
+    - mountPath: /var/lib/istio/data
+      name: istio-data
+    - mountPath: /etc/istio/proxy
+      name: istio-envoy
+    - mountPath: /var/run/secrets/tokens
+      name: istio-token
+    - mountPath: /etc/istio/pod
+      name: istio-podinfo
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-6f9nk
+      readOnly: true
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  initContainers:
+  - args:
+    - istio-iptables
+    - -p
+    - "15001"
+    - -z
+    - "15006"
+    - -u
+    - "1337"
+    - -m
+    - REDIRECT
+    - -i
+    - '*'
+    - -x
+    - ""
+    - -b
+    - '*'
+    - -d
+    - 15090,15021,15020
+    - --log_output_level=default:info
+    image: docker.io/istio/proxyv2:1.20.2
+    imagePullPolicy: IfNotPresent
+    name: istio-init
+    resources:
+      limits:
+        cpu: "2"
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        add:
+        - NET_ADMIN
+        - NET_RAW
+        drop:
+        - ALL
+      privileged: false
+      readOnlyRootFilesystem: false
+      runAsGroup: 0
+      runAsNonRoot: false
+      runAsUser: 0
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-6f9nk
+      readOnly: true
+  nodeName: minikube
+  preemptionPolicy: PreemptLowerPriority
+  priority: 0
+  restartPolicy: Always
+  schedulerName: default-scheduler
+  securityContext: {}
+  serviceAccount: fluent-bit
+  serviceAccountName: fluent-bit
+  terminationGracePeriodSeconds: 30
+  tolerations:
+  - effect: NoExecute
+    key: node.kubernetes.io/not-ready
+    operator: Exists
+  - effect: NoExecute
+    key: node.kubernetes.io/unreachable
+    operator: Exists
+  - effect: NoSchedule
+    key: node.kubernetes.io/disk-pressure
+    operator: Exists
+  - effect: NoSchedule
+    key: node.kubernetes.io/memory-pressure
+    operator: Exists
+  - effect: NoSchedule
+    key: node.kubernetes.io/pid-pressure
+    operator: Exists
+  - effect: NoSchedule
+    key: node.kubernetes.io/unschedulable
+    operator: Exists
+  volumes:
+  - emptyDir: {}
+    name: workload-socket
+  - emptyDir: {}
+    name: credential-socket
+  - emptyDir: {}
+    name: workload-certs
+  - emptyDir:
+      medium: Memory
+    name: istio-envoy
+  - emptyDir: {}
+    name: istio-data
+  - downwardAPI:
+      defaultMode: 420
+      items:
+      - fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.labels
+        path: labels
+      - fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.annotations
+        path: annotations
+    name: istio-podinfo
+  - name: istio-token
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          audience: istio-ca
+          expirationSeconds: 43200
+          path: istio-token
+  - configMap:
+      defaultMode: 420
+      name: istio-ca-root-cert
+    name: istiod-ca-cert
+  - configMap:
+      defaultMode: 420
+      name: fluent-bit
+    name: config
+  - hostPath:
+      path: /var/log
+      type: ""
+    name: varlog
+  - hostPath:
+      path: /var/lib/docker/containers
+      type: ""
+    name: varlibdockercontainers
+  - hostPath:
+      path: /etc/machine-id
+      type: File
+    name: etcmachineid
+  - name: kube-api-access-6f9nk
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          expirationSeconds: 3607
+          path: token
+      - configMap:
+          items:
+          - key: ca.crt
+            path: ca.crt
+          name: kube-root-ca.crt
+      - downwardAPI:
+          items:
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+            path: namespace
+status:
+  conditions:
+  - lastProbeTime: null
+    lastTransitionTime: "2024-08-05T02:52:46Z"
+    status: "True"
+    type: Initialized
+  - lastProbeTime: null
+    lastTransitionTime: "2024-10-10T05:38:20Z"
+    status: "True"
+    type: Ready
+  - lastProbeTime: null
+    lastTransitionTime: "2024-10-10T05:38:20Z"
+    status: "True"
+    type: ContainersReady
+  - lastProbeTime: null
+    lastTransitionTime: "2024-08-05T02:52:43Z"
+    status: "True"
+    type: PodScheduled
+  containerStatuses:
+  - containerID: docker://6ed9f2473ea3b26e5c3b0bb7a33fda54243b85c828e290e87e4076e17e28a85c
+    image: cr.fluentbit.io/fluent/fluent-bit:3.1.4
+    imageID: docker-pullable://cr.fluentbit.io/fluent/fluent-bit@sha256:981b37a0faf56182e2e880cfdb87226dc71ed29a8a9eb4bbaba83ccfe0e00cbf
+    lastState:
+      terminated:
+        containerID: docker://02403ed34cbffa50a080f26c57d16cf88cdfd940d7f5eacee400e985b7db6240
+        exitCode: 137
+        finishedAt: "2024-08-15T20:02:33Z"
+        reason: OOMKilled
+        startedAt: "2024-08-15T19:40:03Z"
+    name: fluent-bit
+    ready: true
+    restartCount: 57
+    started: true
+    state:
+      running:
+        startedAt: "2024-10-10T05:38:07Z"
+  - containerID: docker://44a5929a5cf6ddc696c0ac88462bbb9621f6a4816714bc76aaa6567326f6e2a2
+    image: istio/proxyv2:1.20.2
+    imageID: docker-pullable://istio/proxyv2@sha256:5786e72bf56c4cdf58e88dad39579a24875d05e213aa9a7bba3c59206f84ab6c
+    lastState:
+      terminated:
+        containerID: docker://5e184837367a16f72fa8a24649758be3114d178375abb36b2a5ce466f78719d5
+        exitCode: 255
+        finishedAt: "2024-10-10T05:37:05Z"
+        reason: Error
+        startedAt: "2024-08-15T12:48:03Z"
+    name: istio-proxy
+    ready: true
+    restartCount: 3
+    started: true
+    state:
+      running:
+        startedAt: "2024-10-10T05:38:11Z"
+  hostIP: 192.168.49.2
+  initContainerStatuses:
+  - containerID: docker://1cc5bc61acdfdd93ff043014cfb97583c506c6e521088d2643f595b9cb7b63fb
+    image: istio/proxyv2:1.20.2
+    imageID: docker-pullable://istio/proxyv2@sha256:5786e72bf56c4cdf58e88dad39579a24875d05e213aa9a7bba3c59206f84ab6c
+    lastState: {}
+    name: istio-init
+    ready: true
+    restartCount: 3
+    started: false
+    state:
+      terminated:
+        containerID: docker://1cc5bc61acdfdd93ff043014cfb97583c506c6e521088d2643f595b9cb7b63fb
+        exitCode: 0
+        finishedAt: "2024-10-10T05:37:53Z"
+        reason: Completed
+        startedAt: "2024-10-10T05:37:50Z"
+  phase: Running
+  podIP: 10.244.1.31
+  podIPs:
+  - ip: 10.244.1.31
+  qosClass: Burstable
+  startTime: "2024-08-05T02:52:43Z"
+> kubectl get po fluent-bit-c6hjw -o yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    checksum/config: 02824a76bac8b145bb3d407e1d393fc8f75f8644a3353e6a193b8cdd524f40dc
+    istio.io/rev: default
+    kubectl.kubernetes.io/default-container: fluent-bit
+    kubectl.kubernetes.io/default-logs-container: fluent-bit
+    prometheus.io/path: /stats/prometheus
+    prometheus.io/port: "15020"
+    prometheus.io/scrape: "true"
+    sidecar.istio.io/status: '{"initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["workload-socket","credential-socket","workload-certs","istio-envoy","istio-data","istio-podinfo","istio-token","istiod-ca-cert"],"imagePullSecrets":null,"revision":"default"}'
+  creationTimestamp: "2024-08-05T02:52:43Z"
+  generateName: fluent-bit-
+  labels:
+    app.kubernetes.io/instance: fluent-bit
+    app.kubernetes.io/name: fluent-bit
+    controller-revision-hash: 78b8d7c4c
+    pod-template-generation: "2"
+    security.istio.io/tlsMode: istio
+    service.istio.io/canonical-name: fluent-bit
+    service.istio.io/canonical-revision: latest
+  name: fluent-bit-c6hjw
+  namespace: default
+  ownerReferences:
+  - apiVersion: apps/v1
+    blockOwnerDeletion: true
+    controller: true
+    kind: DaemonSet
+    name: fluent-bit
+    uid: 5e7e1cec-22f8-4898-b238-b584c07684b3
+  resourceVersion: "13921822"
+  uid: 9dbcafdb-1ea8-4a69-953a-f42de0e663f7
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchFields:
+          - key: metadata.name
+            operator: In
+            values:
+            - minikube
+  containers:
+  - args:
+    - --workdir=/fluent-bit/etc
+    - --config=/fluent-bit/etc/conf/fluent-bit.conf
+    command:
+    - /fluent-bit/bin/fluent-bit
+    image: cr.fluentbit.io/fluent/fluent-bit:3.1.4
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      failureThreshold: 3
+      httpGet:
+        path: /app-health/fluent-bit/livez
+        port: 15020
+        scheme: HTTP
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 1
+    name: fluent-bit
+    ports:
+    - containerPort: 2020
+      name: http
+      protocol: TCP
+    readinessProbe:
+      failureThreshold: 3
+      httpGet:
+        path: /app-health/fluent-bit/readyz
+        port: 15020
+        scheme: HTTP
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 1
+    resources: {}
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /fluent-bit/etc/conf
+      name: config
+    - mountPath: /var/log
+      name: varlog
+    - mountPath: /var/lib/docker/containers
+      name: varlibdockercontainers
+      readOnly: true
+    - mountPath: /etc/machine-id
+      name: etcmachineid
+      readOnly: true
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-6f9nk
+      readOnly: true
+  - args:
+    - proxy
+    - sidecar
+    - --domain
+    - $(POD_NAMESPACE).svc.cluster.local
+    - --proxyLogLevel=warning
+    - --proxyComponentLogLevel=misc:error
+    - --log_output_level=default:info
+    env:
+    - name: JWT_POLICY
+      value: third-party-jwt
+    - name: PILOT_CERT_PROVIDER
+      value: istiod
+    - name: CA_ADDR
+      value: istiod.istio-system.svc:15012
+    - name: POD_NAME
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.name
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.namespace
+    - name: INSTANCE_IP
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: status.podIP
+    - name: SERVICE_ACCOUNT
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: spec.serviceAccountName
+    - name: HOST_IP
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: status.hostIP
+    - name: ISTIO_CPU_LIMIT
+      valueFrom:
+        resourceFieldRef:
+          divisor: "0"
+          resource: limits.cpu
+    - name: PROXY_CONFIG
+      value: |
+        {}
+    - name: ISTIO_META_POD_PORTS
+      value: |-
+        [
+            {"name":"http","containerPort":2020,"protocol":"TCP"}
+        ]
+    - name: ISTIO_META_APP_CONTAINERS
+      value: fluent-bit
+    - name: GOMEMLIMIT
+      valueFrom:
+        resourceFieldRef:
+          divisor: "0"
+          resource: limits.memory
+    - name: GOMAXPROCS
+      valueFrom:
+        resourceFieldRef:
+          divisor: "0"
+          resource: limits.cpu
+    - name: ISTIO_META_CLUSTER_ID
+      value: Kubernetes
+    - name: ISTIO_META_NODE_NAME
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: spec.nodeName
+    - name: ISTIO_META_INTERCEPTION_MODE
+      value: REDIRECT
+    - name: ISTIO_META_WORKLOAD_NAME
+      value: fluent-bit
+    - name: ISTIO_META_OWNER
+      value: kubernetes://apis/apps/v1/namespaces/default/daemonsets/fluent-bit
+    - name: ISTIO_META_MESH_ID
+      value: cluster.local
+    - name: TRUST_DOMAIN
+      value: cluster.local
+    - name: ISTIO_KUBE_APP_PROBERS
+      value: '{"/app-health/fluent-bit/livez":{"httpGet":{"path":"/","port":2020,"scheme":"HTTP"},"timeoutSeconds":1},"/app-health/fluent-bit/readyz":{"httpGet":{"path":"/api/v1/health","port":2020,"scheme":"HTTP"},"timeoutSeconds":1}}'
+    image: docker.io/istio/proxyv2:1.20.2
+    imagePullPolicy: IfNotPresent
+    name: istio-proxy
+    ports:
+    - containerPort: 15090
+      name: http-envoy-prom
+      protocol: TCP
+    readinessProbe:
+      failureThreshold: 4
+      httpGet:
+        path: /healthz/ready
+        port: 15021
+        scheme: HTTP
+      periodSeconds: 15
+      successThreshold: 1
+      timeoutSeconds: 3
+    resources:
+      limits:
+        cpu: "2"
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsGroup: 1337
+      runAsNonRoot: true
+      runAsUser: 1337
+    startupProbe:
+      failureThreshold: 600
+      httpGet:
+        path: /healthz/ready
+        port: 15021
+        scheme: HTTP
+      periodSeconds: 1
+      successThreshold: 1
+      timeoutSeconds: 3
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /var/run/secrets/workload-spiffe-uds
+      name: workload-socket
+    - mountPath: /var/run/secrets/credential-uds
+      name: credential-socket
+    - mountPath: /var/run/secrets/workload-spiffe-credentials
+      name: workload-certs
+    - mountPath: /var/run/secrets/istio
+      name: istiod-ca-cert
+    - mountPath: /var/lib/istio/data
+      name: istio-data
+    - mountPath: /etc/istio/proxy
+      name: istio-envoy
+    - mountPath: /var/run/secrets/tokens
+      name: istio-token
+    - mountPath: /etc/istio/pod
+      name: istio-podinfo
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-6f9nk
+      readOnly: true
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  initContainers:
+  - args:
+    - istio-iptables
+    - -p
+    - "15001"
+    - -z
+    - "15006"
+    - -u
+    - "1337"
+    - -m
+    - REDIRECT
+    - -i
+    - '*'
+    - -x
+    - ""
+    - -b
+    - '*'
+    - -d
+    - 15090,15021,15020
+    - --log_output_level=default:info
+    image: docker.io/istio/proxyv2:1.20.2
+    imagePullPolicy: IfNotPresent
+    name: istio-init
+    resources:
+      limits:
+        cpu: "2"
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        add:
+        - NET_ADMIN
+        - NET_RAW
+        drop:
+        - ALL
+      privileged: false
+      readOnlyRootFilesystem: false
+      runAsGroup: 0
+      runAsNonRoot: false
+      runAsUser: 0
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-6f9nk
+      readOnly: true
+  nodeName: minikube
+  preemptionPolicy: PreemptLowerPriority
+  priority: 0
+  restartPolicy: Always
+  schedulerName: default-scheduler
+  securityContext: {}
+  serviceAccount: fluent-bit
+  serviceAccountName: fluent-bit
+  terminationGracePeriodSeconds: 30
+  tolerations:
+  - effect: NoExecute
+    key: node.kubernetes.io/not-ready
+    operator: Exists
+  - effect: NoExecute
+    key: node.kubernetes.io/unreachable
+    operator: Exists
+  - effect: NoSchedule
+    key: node.kubernetes.io/disk-pressure
+    operator: Exists
+  - effect: NoSchedule
+    key: node.kubernetes.io/memory-pressure
+    operator: Exists
+  - effect: NoSchedule
+    key: node.kubernetes.io/pid-pressure
+    operator: Exists
+  - effect: NoSchedule
+    key: node.kubernetes.io/unschedulable
+    operator: Exists
+  volumes:
+  - emptyDir: {}
+    name: workload-socket
+  - emptyDir: {}
+    name: credential-socket
+  - emptyDir: {}
+    name: workload-certs
+  - emptyDir:
+      medium: Memory
+    name: istio-envoy
+  - emptyDir: {}
+    name: istio-data
+  - downwardAPI:
+      defaultMode: 420
+      items:
+      - fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.labels
+        path: labels
+      - fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.annotations
+        path: annotations
+    name: istio-podinfo
+  - name: istio-token
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          audience: istio-ca
+          expirationSeconds: 43200
+          path: istio-token
+  - configMap:
+      defaultMode: 420
+      name: istio-ca-root-cert
+    name: istiod-ca-cert
+  - configMap:
+      defaultMode: 420
+      name: fluent-bit
+    name: config
+  - hostPath:
+      path: /var/log
+      type: ""
+    name: varlog
+  - hostPath:
+      path: /var/lib/docker/containers
+      type: ""
+    name: varlibdockercontainers
+  - hostPath:
+      path: /etc/machine-id
+      type: File
+    name: etcmachineid
+  - name: kube-api-access-6f9nk
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          expirationSeconds: 3607
+          path: token
+      - configMap:
+          items:
+          - key: ca.crt
+            path: ca.crt
+          name: kube-root-ca.crt
+      - downwardAPI:
+          items:
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+            path: namespace
+status:
+  conditions:
+  - lastProbeTime: null
+    lastTransitionTime: "2024-08-05T02:52:46Z"
+    status: "True"
+    type: Initialized
+  - lastProbeTime: null
+    lastTransitionTime: "2024-10-10T05:38:20Z"
+    status: "True"
+    type: Ready
+  - lastProbeTime: null
+    lastTransitionTime: "2024-10-10T05:38:20Z"
+    status: "True"
+    type: ContainersReady
+  - lastProbeTime: null
+    lastTransitionTime: "2024-08-05T02:52:43Z"
+    status: "True"
+    type: PodScheduled
+  containerStatuses:
+  - containerID: docker://6ed9f2473ea3b26e5c3b0bb7a33fda54243b85c828e290e87e4076e17e28a85c
+    image: cr.fluentbit.io/fluent/fluent-bit:3.1.4
+    imageID: docker-pullable://cr.fluentbit.io/fluent/fluent-bit@sha256:981b37a0faf56182e2e880cfdb87226dc71ed29a8a9eb4bbaba83ccfe0e00cbf
+    lastState:
+      terminated:
+        containerID: docker://02403ed34cbffa50a080f26c57d16cf88cdfd940d7f5eacee400e985b7db6240
+        exitCode: 137
+        finishedAt: "2024-08-15T20:02:33Z"
+        reason: OOMKilled
+        startedAt: "2024-08-15T19:40:03Z"
+    name: fluent-bit
+    ready: true
+    restartCount: 57
+    started: true
+    state:
+      running:
+        startedAt: "2024-10-10T05:38:07Z"
+  - containerID: docker://44a5929a5cf6ddc696c0ac88462bbb9621f6a4816714bc76aaa6567326f6e2a2
+    image: istio/proxyv2:1.20.2
+    imageID: docker-pullable://istio/proxyv2@sha256:5786e72bf56c4cdf58e88dad39579a24875d05e213aa9a7bba3c59206f84ab6c
+    lastState:
+      terminated:
+        containerID: docker://5e184837367a16f72fa8a24649758be3114d178375abb36b2a5ce466f78719d5
+        exitCode: 255
+        finishedAt: "2024-10-10T05:37:05Z"
+        reason: Error
+        startedAt: "2024-08-15T12:48:03Z"
+    name: istio-proxy
+    ready: true
+    restartCount: 3
+    started: true
+    state:
+      running:
+        startedAt: "2024-10-10T05:38:11Z"
+  hostIP: 192.168.49.2
+  initContainerStatuses:
+  - containerID: docker://1cc5bc61acdfdd93ff043014cfb97583c506c6e521088d2643f595b9cb7b63fb
+    image: istio/proxyv2:1.20.2
+    imageID: docker-pullable://istio/proxyv2@sha256:5786e72bf56c4cdf58e88dad39579a24875d05e213aa9a7bba3c59206f84ab6c
+    lastState: {}
+    name: istio-init
+    ready: true
+    restartCount: 3
+    started: false
+    state:
+      terminated:
+        containerID: docker://1cc5bc61acdfdd93ff043014cfb97583c506c6e521088d2643f595b9cb7b63fb
+        exitCode: 0
+        finishedAt: "2024-10-10T05:37:53Z"
+        reason: Completed
+        startedAt: "2024-10-10T05:37:50Z"
+  phase: Running
+  podIP: 10.244.1.31
+  podIPs:
+  - ip: 10.244.1.31
+  qosClass: Burstable
+  startTime: "2024-08-05T02:52:43Z"
